@@ -7,12 +7,15 @@
 #' @import ggplot2
 #' @import POT
 #' @import parallel
+#' @import pbapply
+
 #'
 #' @param ExpressionData ExpressionData is an object constructed by  SummarizedExperiment. It contains the independent variables matrix and outcome variables matrix.
 #' @param outcomevariable Variables which must be the column name of the outcome variables matrix were used to construct models.
 #' @param observed.fre dataframe with columns 'variable' and 'Frequency', which can be obtained from existed VSOLassoBag results for re-analysis. A warning will be issued if the variables in `observed.fre` not found in `mat`, and these variables will be excluded.
 #' @param bootN the size of re-sampled samples for bagging, default 1000; smaller consumes less processing time but may not get robust results.
-#' @param boot.rep whether sampling with return or not in the bagging procedure
+#' @param boot.rep whether sampling with return or not in the bagging procedure.
+#' @param sample.size The sample size in the bagging space, default is 1 (same sample size as the input sample size).
 #' @param a.family a character determine the data type of out.mat, the same used in \code{\link[glmnet]{glmnet}}.
 #' @param additional.covariable provide additional covariable(s) to build the cox model, only valid in Cox method (`a.family` == "cox"); a data.frame with same rows as `mat`
 #' @param bagFreq.sigMethod a character to determine the cut-off point decision method for the importance measure (i.e. the observed selection frequency). Supported methods are "Parametric Statistical Test" (abbr. "PST"), "Curve Elbow Point Detection" ("CEP") and "Permutation Test" ("PERT"). The default and preferable method is "CEP". The method "PERT" is not recommended due to consuming time and memmory requirement.
@@ -99,7 +102,7 @@
 #' # multi-thread processing using 2 threads
 #' VSOLassoBag(ExpressionData, "y", bootN=1000, a.family="binomial",
 #'             bagFreq.sigMethod="PST", do.plot = FALSE, plot.freq = "not",
-#'             parallel=TRUE,n.cores=2)
+#'             parallel=TRUE,n.cores=1)
 #' }
 
 utils::globalVariables(c("coef", "base.exist", "p.adjust", "pdf",
@@ -107,18 +110,18 @@ utils::globalVariables(c("coef", "base.exist", "p.adjust", "pdf",
                          "median", "reorder", "variable", "k_hyb",
                          "sigma_hyb", "stats"))
 VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
-                      bootN=1000,boot.rep=TRUE,
-                      a.family=c("gaussian","binomial","poisson","multinomial","cox","mgaussian"),additional.covariable=NULL,
-                      bagFreq.sigMethod="CEP",
-                      kneedle.S=10,auto.loose=TRUE,loosing.factor=0.5,min.S=0.1,
-                      use.gpd=FALSE, fit.pareto="gd",imputeN=1000,imputeN.max=2000,permut.increase=100,
-                      parallel=FALSE,n.cores=1,
-                      nfolds=4,lambda.type="lambda.1se",
-                      plot.freq="part",plot.out=FALSE, do.plot=TRUE,output.dir=NA,
-                      filter.method="auto",inbag.filter=TRUE,filter.thres.method="fdr",filter.thres.P=0.05,filter.rank.cutoff=0.05,filter.min.variables=-Inf,filter.max.variables=Inf,
-                      filter.result.report=TRUE,filter.report.all.variables=TRUE,
-                      post.regression=FALSE,post.LASSO=FALSE,pvalue.cutoff=0.05,used.elbow.point="middle"
-                      ) {
+                        bootN=1000,boot.rep=TRUE,sample.size=1,
+                        a.family=c("gaussian","binomial","poisson","multinomial","cox","mgaussian"),additional.covariable=NULL,
+                        bagFreq.sigMethod="CEP",
+                        kneedle.S=10,auto.loose=TRUE,loosing.factor=0.5,min.S=0.1,
+                        use.gpd=FALSE, fit.pareto="gd",imputeN=1000,imputeN.max=2000,permut.increase=100,
+                        parallel=FALSE,n.cores=1,
+                        nfolds=4,lambda.type="lambda.1se",
+                        plot.freq="part",plot.out=FALSE, do.plot=TRUE,output.dir=NA,
+                        filter.method="auto",inbag.filter=TRUE,filter.thres.method="fdr",filter.thres.P=0.05,filter.rank.cutoff=0.05,filter.min.variables=-Inf,filter.max.variables=Inf,
+                        filter.result.report=TRUE,filter.report.all.variables=TRUE,
+                        post.regression=FALSE,post.LASSO=FALSE,pvalue.cutoff=0.05,used.elbow.point="middle"
+) {
   mat <- t(assay(ExpressionData))
   out.mat <- colData(ExpressionData)
   out.mat <- as.matrix(out.mat[ ,outcomevariable])
@@ -148,8 +151,12 @@ VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
   }
   all.num <- bootN * imputeN
 
-  if (is.vector(out.mat)){  # force to be matrix
-    out.mat<-as.matrix(out.mat,ncol=1)
+  if (!is.matrix(out.mat)){  # force to be matrix
+    if (is.null(dim(out.mat))){
+      out.mat<-as.matrix(out.mat,ncol=1)
+    }else{
+      out.mat<-as.matrix(out.mat)
+    }
   }
 
   if (!is.null(additional.covariable)){
@@ -205,12 +212,21 @@ VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
   colnames(zeromat) <- colnames(out.mat)
   rownames(zeromat) <- rownames(out.mat)
   for (i in 1:ncol(out.mat)) {
-    zeromat[,i] <- as.numeric(out.mat[,i])
+    if (typeof(out.mat[,i]) %in% c('numeric','factor','integer')){
+      zeromat[,i] <- as.numeric(factor(out.mat[,i]))
+    }else{
+      zeromat[,i] <- as.numeric(out.mat[,i])
+    }
+
   }
   out.mat <- zeromat  # it's necessary to substitute in this way for there will be some mistake in later handling if we don't do this
 
   rm(zeromat)
   gc()
+
+  if(sum(is.na(out.mat)) > 0){
+    warning("No characters allowed in the response variable, please convert to numeric format")
+  }
 
   ## INIT end
   message(paste(date(), "", sep=" -- INIT process completed, start analyzing "), '\n')
@@ -300,7 +316,7 @@ VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
       selecVlist1 <- mclapply(permutate.index.list, boot.indiv,mc.cores = n.cores,mc.preschedule=TRUE,mc.cleanup=TRUE)  # Slower, but can save some memory
       parallel_time<<-parallel_time+difftime(Sys.time(),parallel_sts,units="min")
     } else {
-      selecVlist1 <- mclapply(permutate.index.list, boot.indiv)
+      selecVlist1 <- lapply(permutate.index.list, boot.indiv)
     }
     return(selecVlist1)
   }
@@ -312,13 +328,14 @@ VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
     #index new list for bagging
     index.list.bootonce<-list()
     for(i in 1:bootN){
-      sampleindex2 <- sample(1:nrow(mat), 1*nrow(mat), replace = boot.rep)  # re-sampling, same size
+      sampleindex2 <- sample(1:nrow(mat), sample.size*nrow(mat), replace = boot.rep)  # re-sampling, same size
       index.list.bootonce[[i]]<-sampleindex2
     }
 
     if (parallel & is.null(permutate.index.list)){
       gc()
       parallel_sts<-Sys.time()
+      selecVlist1 <- mclapply(index.list.bootonce, boot.once, permutate.index.list=permutate.index.list,paralleled=TRUE,mc.cores = n.cores,mc.preschedule=TRUE,mc.cleanup=TRUE)
       parallel_time<<-parallel_time+difftime(Sys.time(),parallel_sts,units="min")
     }else{
       selecVlist1 <- pblapply(index.list.bootonce, boot.once, permutate.index.list=permutate.index.list)
@@ -441,9 +458,9 @@ VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
           # show if the GPD
           tryCatch({p.value <- LessPermutation(as.numeric(as.character(temp.list)),observed.value,fitting.method = fit.pareto)
           good.fit <- adtest.gpd(temp.list,observed.fre[i],fitting.method = fit.pareto)},
-                   error=function(e){p.value<-(length(temp.list[temp.list>observed.fre[i]])+1)/N;
-                   message(p.value);
-                   message("no data is bigger than threshold, we will use traditional p-value")})
+          error=function(e){p.value<-(length(temp.list[temp.list>observed.fre[i]])+1)/N;
+          message(p.value);
+          message("no data is bigger than threshold, we will use traditional p-value")})
         } else {
           good.fit <- "fit_good_enough"
         }
@@ -528,14 +545,14 @@ VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
           x<-c(1:nrow(res.df))
           markPoints<-which(res.df$elbow.point=="*")
           print(ggplot(res.df) +
-            geom_step(aes(x=x,y=Frequency),color="black",size=0.5)+
-            geom_line(aes(x=x,y=Diff),color="red",size=0.5)+
-            geom_step(aes(x=x,y=Thres),color="#6666ff",linetype="twodash",size=0.4)+
-            geom_vline(xintercept=markPoints,color="#0000cc",linetype="dashed",size=0.3) +
-            theme_bw() +
-            theme(axis.text.x  = element_text(angle=45, vjust = 0.9, hjust = 1)) +
-            xlab("Variables Frequency Rank\n(black: frequency; dashed vertical: elbow point;\nred: difference; dashed blue: threshold)")+
-            ylab("Frequency"))
+                  geom_step(aes(x=x,y=Frequency),color="black",size=0.5)+
+                  geom_line(aes(x=x,y=Diff),color="red",size=0.5)+
+                  geom_step(aes(x=x,y=Thres),color="#6666ff",linetype="twodash",size=0.4)+
+                  geom_vline(xintercept=markPoints,color="#0000cc",linetype="dashed",size=0.3) +
+                  theme_bw() +
+                  theme(axis.text.x  = element_text(angle=45, vjust = 0.9, hjust = 1)) +
+                  xlab("Variables Frequency Rank\n(black: frequency; dashed vertical: elbow point;\nred: difference; dashed blue: threshold)")+
+                  ylab("Frequency"))
           dev.off()
         }
       }
@@ -553,10 +570,10 @@ VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
       if (do.plot){
         pdf("ObservedFreqDistribution.pdf")
         print(ggplot(res.df) +
-          geom_histogram(aes(x=Frequency),fill="#ff9999",color="#cc0000")  + geom_text(aes(x=max(Frequency)*0.8,y=nrow(res.df)*0.1,label=paste0("average selection ratio=\n",round(pin,digits=4)))) +
-          theme_bw() +
-          theme(axis.text.x  = element_text(angle=45, vjust = 0.9, hjust = 1)) +
-          xlab("Observed Selection Frequency")+ylab("Variables Count"))
+                geom_histogram(aes(x=Frequency),fill="#ff9999",color="#cc0000")  + geom_text(aes(x=max(Frequency)*0.8,y=nrow(res.df)*0.1,label=paste0("average selection ratio=\n",round(pin,digits=4)))) +
+                theme_bw() +
+                theme(axis.text.x  = element_text(angle=45, vjust = 0.9, hjust = 1)) +
+                xlab("Observed Selection Frequency")+ylab("Variables Count"))
         dev.off()
       }
       res.df<-res.df[order(res.df$Frequency,decreasing=TRUE),]
@@ -625,10 +642,10 @@ VSOLassoBag <- function(ExpressionData, outcomevariable, observed.fre=NULL,
       if (plot.out!=FALSE) {  # for saving files
         pdf(plot.out)
         gg<-ggplot(plot.df, aes(reorder(variable, -Frequency), Frequency)) +
-           geom_bar(stat = "identity") +
-           theme_bw() +
-           theme(axis.text.x  = element_text(angle=45, vjust = 0.9, hjust = 1)) +
-           xlab(label = "Variables")
+          geom_bar(stat = "identity") +
+          theme_bw() +
+          theme(axis.text.x  = element_text(angle=45, vjust = 0.9, hjust = 1)) +
+          xlab(label = "Variables")
         if (nrow(plot.df)>=30){
           gg<-gg+theme(axis.text.x=element_blank())
         }

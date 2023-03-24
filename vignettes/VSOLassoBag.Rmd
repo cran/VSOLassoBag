@@ -61,10 +61,7 @@ knitr::opts_chunk$set(
 ### 1.1 Citation
 If you find this tool useful, please cite:
 
-> **Jiaqi Liang, Chaoye Wang and Qi Zhao(2022). VSOLassoBag: a
-  variable-selection oriented LASSO bagging algorithm for biomarker
-  discovery in omic-based translational research. R package version
-  1.0.0.**
+> **Liang J, Wang C, Zhang D, et al. VSOLassoBag: A variable-selection oriented LASSO bagging algorithm for biomarker discovery in omic-based translational research [published online ahead of print, 2023 Jan 3]. J Genet Genomics. 2023;S1673-8527(22)00285-5. doi:10.1016/j.jgg.2022.12.005**
   
 
 ## 2. Installation

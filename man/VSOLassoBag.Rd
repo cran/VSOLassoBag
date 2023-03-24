@@ -10,6 +10,7 @@ VSOLassoBag(
   observed.fre = NULL,
   bootN = 1000,
   boot.rep = TRUE,
+  sample.size = 1,
   a.family = c("gaussian", "binomial", "poisson", "multinomial", "cox", "mgaussian"),
   additional.covariable = NULL,
   bagFreq.sigMethod = "CEP",
@@ -59,6 +60,8 @@ and these variables will be excluded.}
 consumes less processing time but may not get robust results.}
 
 \item{boot.rep}{whether sampling with return or not in the bagging procedure}
+
+\item{sample.size}{The sample size in the bagging space, default is 1 (same sample size as the input sample size).}
 
 \item{a.family}{a character determine the data type of out.mat, the same used
 in \code{\link[glmnet]{glmnet}}.}
@@ -250,7 +253,7 @@ bagFreq.sigMethod="CEP", do.plot = FALSE, plot.freq = "not")
 # multi-thread processing using 2 threads
 VSOLassoBag(ExpressionData, "y", bootN=1000, a.family="binomial",
 bagFreq.sigMethod="PST", do.plot = FALSE, plot.freq = "not",
-parallel=TRUE,n.cores=2)
+parallel=TRUE,n.cores=1)
 }
 }
 \seealso{
