@@ -1,8 +1,8 @@
 Package: VSOLassoBag
 Type: Package
 Title: Variable Selection Oriented LASSO Bagging Algorithm
-Version: 0.99.1
-Date: 2023-3-24
+Version: 1.0
+Date: 2025-09-01
 biocViews: Software, StatisticalMethod, FeatureExtraction
 Authors@R: c(
   person('Jiaqi', 'Liang',  email = 'liangjq27@mail2.sysu.edu.cn', role = c('aut')),
@@ -14,14 +14,14 @@ Encoding: UTF-8
 Depends: R (>= 3.6.0)
 Imports: glmnet, survival, ggplot2, POT, parallel, utils, pbapply,
         methods, SummarizedExperiment
-RoxygenNote: 7.2.0
+RoxygenNote: 7.3.0
 Suggests: rmarkdown, knitr, rmdformats, qpdf
 VignetteBuilder: knitr
 LazyData: true
 NeedsCompilation: no
-Packaged: 2023-03-24 16:11:44 UTC; zhou
+Packaged: 2025-09-01 11:45:05 UTC; chaoyewang
 Author: Jiaqi Liang [aut],
   Chaoye Wang [aut, cre]
 Maintainer: Chaoye Wang <wangcy1@sysucc.org.cn>
 Repository: CRAN
-Date/Publication: 2023-03-24 16:40:08 UTC
+Date/Publication: 2025-09-01 12:10:02 UTC

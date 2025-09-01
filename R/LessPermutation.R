@@ -1,6 +1,6 @@
-#' @title Reduce permutation times
-#'
-#' Reduce permutation times by fitting generalized pareto distribution of the right tail data
+utils::globalVariables("PSOptTheta")
+
+#' @title Reduce permutation times by fitting generalized pareto distribution of the right tail data
 #'
 #' @import POT
 #'
@@ -18,7 +18,6 @@
 #' x <- POT::rgpd(200, 1, 2, 0.25)
 #' LessPermutation(x,1,fitting.method='gd')
 
-utils::globalVariables("PSOptTheta")
 LessPermutation <- function(X, x0, fitting.method="mle",search.step=0.01,fit.cutoff=0.05, when.to.fit=0.05) {
   # using General Pareto Distribution to fit the exceedances and return an estimated p value
   #

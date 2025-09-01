@@ -1,3 +1,5 @@
+utils::globalVariables("pbinom")
+
 # Provide p-value using the statistical method described in RRLASSO (Park H., et al, 2015; doi:10.1371/journal.pone.0141869)
 
 # Return a p-value list and the average selection ratio pi
@@ -16,7 +18,6 @@
 #' load(system.file("extdata/Results.RData", package="VSOLassoBag"))
 #' simpleEstimation(Results, 10)
 
-utils::globalVariables("pbinom")
 simpleEstimation<-function(res.df,bootN){
   pin<-sum(res.df$Frequency)/(bootN*nrow(res.df))
   pvalue.list<-pbinom(q=res.df$Frequency,size=bootN,prob=pin,lower.tail=FALSE)

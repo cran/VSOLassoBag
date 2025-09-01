@@ -2,7 +2,7 @@
 % Please edit documentation in R/LessPermutation.R
 \name{LessPermutation}
 \alias{LessPermutation}
-\title{Reduce permutation times}
+\title{Reduce permutation times by fitting generalized pareto distribution of the right tail data}
 \usage{
 LessPermutation(
   X,
@@ -30,9 +30,9 @@ LessPermutation(
 p value of the observed value in the permutation test
 }
 \description{
-Reduce permutation times by fitting generalized pareto distribution of the right tail data.
+Reduce permutation times by fitting generalized pareto distribution of the right tail data
 }
 \examples{
-x = POT::rgpd(200, 1, 2, 0.25)
+x <- POT::rgpd(200, 1, 2, 0.25)
 LessPermutation(x,1,fitting.method='gd')
 }
